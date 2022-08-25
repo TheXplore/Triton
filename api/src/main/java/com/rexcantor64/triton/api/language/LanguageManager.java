@@ -3,6 +3,7 @@ package com.rexcantor64.triton.api.language;
 import com.rexcantor64.triton.api.players.LanguagePlayer;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -151,4 +152,10 @@ public interface LanguageManager {
      * @since 1.0.0
      */
     Language getMainLanguage();
+    
+    //ILUMINARY START
+    
+    void setMiniMessageParser(Function<String, String> parser);
+    
+    //ILUMINARY STOP
 }
