@@ -95,6 +95,18 @@ public class AdvancedComponent {
                         args.add(fromBaseComponent(false, arg));
                 advancedComponent.setTranslatableArguments(uuid.toString(), args);
             }
+            
+            //ILUMINARY START
+            
+            if (!onlyText && comp instanceof KeybindComponent) {
+            	KeybindComponent kc = (KeybindComponent) comp;
+                builder.append("\uE700")
+                        .append(kc.getKeybind())
+                        .append("\uE700");
+            }
+            
+            //ILUMINARY STOP
+            
             if (comp.getExtra() != null) {
                 AdvancedComponent component = fromBaseComponent(onlyText, comp.getExtra()
                         .toArray(new BaseComponent[0]));
@@ -238,7 +250,32 @@ public class AdvancedComponent {
                         tc.addWith(bc == null ? new TextComponent("") : bc[0]);
                     }
                 list.add(tc);
-            } else
+                
+            //ILUMINARY START
+            } else if (c == '\uE700') {
+            	 i++;
+            	
+            	 StringBuilder key = new StringBuilder();
+                 while (text.charAt(i) != '\uE700') {
+                     key.append(text.charAt(i));
+                     i++;
+                 }
+                 
+                 if (builder.length() != 0) {
+                     component.setText(builder.toString());
+                     builder = new StringBuilder();
+                     BaseComponent previousComponent = component;
+                     list.add(component);
+                     component = new TextComponent("");
+                     ComponentUtils.copyFormatting(previousComponent, component);
+                 }
+                 
+                 KeybindComponent kc = new KeybindComponent(key.toString());
+                 ComponentUtils.copyFormatting(component, kc);
+                 list.add(kc);
+            }
+            //ILUMINARY STOP
+            else
                 builder.append(c);
         }
         if (builder.length() != 0) {

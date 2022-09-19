@@ -124,6 +124,7 @@ bungee {
     description = pluginDescription
     author = pluginAuthor
     main = 'com.rexcantor64.triton.plugin.BungeePlugin'
+    depends = ['Protocolize']
 }
 
 shadowJar {
