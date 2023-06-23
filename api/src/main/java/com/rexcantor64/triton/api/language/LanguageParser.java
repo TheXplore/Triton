@@ -1,5 +1,7 @@
 package com.rexcantor64.triton.api.language;
 
+import java.util.function.Function;
+
 import com.rexcantor64.triton.api.config.FeatureSyntax;
 import net.md_5.bungee.api.chat.BaseComponent;
 
@@ -29,5 +31,11 @@ public interface LanguageParser {
      * @return The input but with Triton's placeholders replaced by the message in the provided language.
      */
     BaseComponent[] parseComponent(String language, FeatureSyntax syntax, BaseComponent... input);
-
+    
+    //ILUMINARY START
+    /**
+     * converts minimessage input to gson serialized parsed component
+     */
+    void setMiniMessageParser(Function<String, String> parser);
+    //ILUMINARY STOP
 }
