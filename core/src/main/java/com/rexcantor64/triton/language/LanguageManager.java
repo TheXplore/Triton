@@ -1,5 +1,15 @@
 package com.rexcantor64.triton.language;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.api.language.Localized;
 import com.rexcantor64.triton.api.language.SignLocation;
@@ -8,22 +18,11 @@ import com.rexcantor64.triton.language.item.LanguageSign;
 import com.rexcantor64.triton.language.item.LanguageText;
 import com.rexcantor64.triton.language.localized.StringLocale;
 import com.rexcantor64.triton.storage.LocalStorage;
+
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.val;
 import net.md_5.bungee.api.ChatColor;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class LanguageManager implements com.rexcantor64.triton.api.language.LanguageManager {
 
@@ -99,24 +98,14 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
         Triton.get().getLogger().logTrace("Found translation with key '%1' in language '%2'", code, language);
         return Optional.of(formatMessage(msg, args));
     }
-    
-    //ILUMINARY START
-    private @Setter Function<String, String> miniMessageParser;
 
     private @NonNull String formatMessage(@NonNull String msg, @NonNull Object... args) {
         // Loop backwards in order to replace %10 before %1 (for example)
         for (int i = args.length - 1; i >= 0; --i)
             msg = msg.replace("%" + (i + 1), String.valueOf(args[i]));
-        
-        if(miniMessageParser != null) {
-        	msg = miniMessageParser.apply(msg);
-        }
-        
         return ChatColor.translateAlternateColorCodes('&', msg);
     }
     
-    //ILUMINARY STOP
-
     public String[] getSign(LanguagePlayer player, SignLocation location) {
         return getSign(player, location, () -> new String[4]);
     }
@@ -175,10 +164,6 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
                         );
                 while (result[i].startsWith(ChatColor.RESET.toString()))
                     result[i] = result[i].substring(2);
-            }
-            
-            if(miniMessageParser != null) {
-            	result[i] = miniMessageParser.apply(result[i]);
             }
 
             result[i] = ChatColor.translateAlternateColorCodes('&', result[i]);
