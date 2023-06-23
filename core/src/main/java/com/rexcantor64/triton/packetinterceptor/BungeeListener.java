@@ -63,7 +63,7 @@ public class BungeeListener extends MessageToMessageEncoder<DefinedPacket> {
 
     private void handlePlayerListItemUpdate(DefinedPacket packet) {
         PlayerListItemUpdate p = (PlayerListItemUpdate) packet;
-        if (p.getActions().contains(PlayerListItemUpdate.Action.UPDATE_DISPLAY_NAME)) {
+        if (!p.getActions().contains(PlayerListItemUpdate.Action.UPDATE_DISPLAY_NAME)) {
             return;
         }
         List<PlayerListItem.Item> items = new ArrayList<>();
@@ -108,7 +108,15 @@ public class BungeeListener extends MessageToMessageEncoder<DefinedPacket> {
                 Triton.get().getConf().getChatSyntax() : Triton.get().getConf().getActionbarSyntax(), text);
         if (text == null)
             return false;
-        p.setMessage(ComponentSerializer.toString(text));
+
+        if (type == 2 && protocolVersion <= ProtocolConstants.MINECRAFT_1_10) {
+            // The Notchian client does not support true JSON messages on actionbars
+            // on 1.10 and below. Therefore, we must convert to a legacy string inside
+            // a TextComponent.
+            p.setMessage(ComponentSerializer.toString(new TextComponent(TextComponent.toLegacyText(text))));
+        } else {
+            p.setMessage(ComponentSerializer.toString(text));
+        }
         return true;
     }
 
@@ -265,11 +273,20 @@ public class BungeeListener extends MessageToMessageEncoder<DefinedPacket> {
     private PlayerListItem.Item clonePlayerListItem(PlayerListItem.Item item) {
         PlayerListItem.Item item1 = new PlayerListItem.Item();
         item1.setUuid(item.getUuid());
-        item1.setDisplayName(item.getDisplayName());
-        item1.setGamemode(item.getGamemode());
-        item1.setProperties(item.getProperties());
-        item1.setPing(item.getPing());
+
         item1.setUsername(item.getUsername());
+        item1.setProperties(item.getProperties());
+
+        item1.setChatSessionId(item.getChatSessionId());
+        item1.setPublicKey(item.getPublicKey());
+
+        item1.setListed(item.getListed());
+
+        item1.setGamemode(item.getGamemode());
+
+        item1.setPing(item.getPing());
+
+        item1.setDisplayName(item.getDisplayName());
         return item1;
     }
 
