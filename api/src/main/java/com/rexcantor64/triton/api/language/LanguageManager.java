@@ -151,4 +151,10 @@ public interface LanguageManager {
      * @since 1.0.0
      */
     Language getMainLanguage();
+    
+    //ILUMINARY START
+    
+    void setMiniMessageParser(Function<String, String> parser);
+    
+    //ILUMINARY STOP
 }
