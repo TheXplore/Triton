@@ -1,18 +1,5 @@
 package com.rexcantor64.triton.language;
 
-import com.rexcantor64.triton.Triton;
-import com.rexcantor64.triton.api.language.Localized;
-import com.rexcantor64.triton.api.language.SignLocation;
-import com.rexcantor64.triton.api.players.LanguagePlayer;
-import com.rexcantor64.triton.language.item.LanguageSign;
-import com.rexcantor64.triton.language.item.LanguageText;
-import com.rexcantor64.triton.language.localized.StringLocale;
-import com.rexcantor64.triton.storage.LocalStorage;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.val;
-import net.md_5.bungee.api.ChatColor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +9,20 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.rexcantor64.triton.Triton;
+import com.rexcantor64.triton.api.language.Localized;
+import com.rexcantor64.triton.api.language.SignLocation;
+import com.rexcantor64.triton.api.players.LanguagePlayer;
+import com.rexcantor64.triton.language.item.LanguageSign;
+import com.rexcantor64.triton.language.item.LanguageText;
+import com.rexcantor64.triton.language.localized.StringLocale;
+import com.rexcantor64.triton.storage.LocalStorage;
+
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.val;
+import net.md_5.bungee.api.ChatColor;
 
 public class LanguageManager implements com.rexcantor64.triton.api.language.LanguageManager {
 
