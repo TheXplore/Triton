@@ -5,14 +5,7 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.utility.MinecraftVersion;
-import com.comphenix.protocol.wrappers.Converters;
-import com.comphenix.protocol.wrappers.EnumWrappers;
-import com.comphenix.protocol.wrappers.PlayerInfoData;
-import com.comphenix.protocol.wrappers.WrappedChatComponent;
-import com.comphenix.protocol.wrappers.WrappedDataValue;
-import com.comphenix.protocol.wrappers.WrappedDataWatcher;
-import com.comphenix.protocol.wrappers.WrappedGameProfile;
-import com.comphenix.protocol.wrappers.WrappedWatchableObject;
+import com.comphenix.protocol.wrappers.*;
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.api.wrappers.EntityType;
 import com.rexcantor64.triton.player.LanguagePlayer;
@@ -31,15 +24,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -101,22 +86,9 @@ public class EntitiesPacketHandler extends PacketHandler {
             return;
         }
         if (entityType == EntityType.PLAYER) {
-            if (!MinecraftVersion.CONFIG_PHASE_PROTOCOL_UPDATE.atOrAbove()) { // 1.20.2
-                // Ignore human entities since they're handled separately
-                // This packet should never spawn one either way
-                return;
-            }
-            // TODO For now, it is only possible to translate NPCs that are saved server side
-            // Fetch entity object using main thread, otherwise we'll get concurrency issues
-            Triton.asSpigot()
-                    .callSync(() -> packet.getPacket().getEntityModifier(packet).readSafely(0))
-                    .ifPresent(entity -> addEntity(
-                                    languagePlayer.getPlayersMap(),
-                                    packet.getPlayer().getWorld(),
-                                    entity.getEntityId(),
-                                    entity
-                            )
-                    );
+            // Ignore human entities since they're handled separately
+            // This packet should never spawn one either way
+            return;
         }
 
         // Add entity to cache
@@ -187,7 +159,6 @@ public class EntitiesPacketHandler extends PacketHandler {
      * translation is enabled for human entities.
      * Due to the complexity of translating human entities, it is only possible to translate
      * those stored server side by the server itself.
-     * This packet was removed in MC 1.20.2
      *
      * @param packet         ProtocolLib's packet event.
      * @param languagePlayer The language player this packet is being sent to.
@@ -361,22 +332,6 @@ public class EntitiesPacketHandler extends PacketHandler {
                                 )
                         ).orElse(oldObject)
                 );
-            } else if (oldObject.getIndex() == 23) {
-                // Index 23 is "Text" of type "Chat"
-                // https://wiki.vg/Entity_metadata#Text_Display
-                // Used to translate text display entities
-                newWatchableObjects.add(
-                        this.dataValueHandler.translateTextDisplayTextDataValue(
-                                languagePlayer,
-                                oldObject,
-                                (text) -> addEntity(
-                                        languagePlayer.getTextDisplayEntitiesMap(),
-                                        packet.getPlayer().getWorld(),
-                                        entityId,
-                                        text
-                                )
-                        ).orElse(oldObject)
-                );
             } else {
                 newWatchableObjects.add(oldObject);
             }
@@ -429,7 +384,7 @@ public class EntitiesPacketHandler extends PacketHandler {
         List<PlayerInfoData> dataList;
         if (MinecraftVersion.FEATURE_PREVIEW_UPDATE.atOrAbove()) { // 1.19.3
             val infoActions = packet.getPacket().getPlayerInfoActions().readSafely(0);
-            if (!infoActions.contains(EnumWrappers.PlayerInfoAction.ADD_PLAYER) && !infoActions.contains(EnumWrappers.PlayerInfoAction.UPDATE_DISPLAY_NAME)) {
+            if (!infoActions.contains(EnumWrappers.PlayerInfoAction.UPDATE_DISPLAY_NAME) && !infoActions.contains(EnumWrappers.PlayerInfoAction.UPDATE_DISPLAY_NAME)) {
                 return;
             }
             dataList = packet.getPacket().getPlayerInfoDataLists().readSafely(1);
@@ -515,7 +470,6 @@ public class EntitiesPacketHandler extends PacketHandler {
         refreshNormalEntities(languagePlayer, bukkitPlayer);
         refreshHumanEntities(languagePlayer, bukkitPlayer);
         refreshItemFramesEntities(languagePlayer, bukkitPlayer);
-        refreshTextDisplayEntities(languagePlayer, bukkitPlayer);
     }
 
     /**
@@ -648,13 +602,7 @@ public class EntitiesPacketHandler extends PacketHandler {
             val packetAdd = getPlayerInfoAddPacket(humanEntity);
 
             // Spawn the entity again
-            PacketContainer packetSpawn;
-            if (MinecraftVersion.CONFIG_PHASE_PROTOCOL_UPDATE.atOrAbove()) { // 1.20.2
-                packetSpawn = createPacket(PacketType.Play.Server.SPAWN_ENTITY);
-            } else {
-                // noinspection deprecation
-                packetSpawn = createPacket(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
-            }
+            val packetSpawn = createPacket(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
             packetSpawn.getIntegers().writeSafely(0, humanEntity.getEntityId());
             packetSpawn.getUUIDs().writeSafely(0, humanEntity.getUniqueId());
             if (getMcVersion() < 9) {
@@ -673,18 +621,7 @@ public class EntitiesPacketHandler extends PacketHandler {
             packetSpawn.getBytes()
                     .writeSafely(0, (byte) (int) (humanEntity.getLocation().getYaw() * 256.0F / 360.0F))
                     .writeSafely(1, (byte) (int) (humanEntity.getLocation().getPitch() * 256.0F / 360.0F));
-            if (MinecraftVersion.CONFIG_PHASE_PROTOCOL_UPDATE.atOrAbove()) { // 1.20.2
-                packetSpawn.getBytes().writeSafely(2, (byte) 0);
-                val velocity = humanEntity.getVelocity();
-                packetSpawn.getIntegers()
-                        .writeSafely(1, (int) (Math.max(-3.9d, Math.min(3.9d, velocity.getX())) * 8000.0d))
-                        .writeSafely(2, (int) (Math.max(-3.9d, Math.min(3.9d, velocity.getY())) * 8000.0d))
-                        .writeSafely(3, (int) (Math.max(-3.9d, Math.min(3.9d, velocity.getZ())) * 8000.0d))
-                        .writeSafely(4, 0); // "entity data"
-                packetSpawn.getEntityTypeModifier().writeSafely(0, org.bukkit.entity.EntityType.PLAYER);
-            } else {
-                packetSpawn.getDataWatcherModifier().writeSafely(0, WrappedDataWatcher.getEntityWatcher(humanEntity));
-            }
+            packetSpawn.getDataWatcherModifier().writeSafely(0, WrappedDataWatcher.getEntityWatcher(humanEntity));
 
             // Even though this is sent in the spawn packet, we still need to send it again for some reason
             val packetLook = createPacket(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
@@ -830,50 +767,6 @@ public class EntitiesPacketHandler extends PacketHandler {
     }
 
     /**
-     * Resend text of text display entities when the language of a player changes.
-     * This will send entity metadata packets.
-     *
-     * @param languagePlayer The player to resend the entity packets to.
-     * @param bukkitPlayer   The bukkit handler of languagePlayer.
-     * @since 3.9.1
-     */
-    private void refreshTextDisplayEntities(@NotNull SpigotLanguagePlayer languagePlayer, @NotNull Player bukkitPlayer) {
-        val entitiesInCurrentWorld = languagePlayer.getTextDisplayEntitiesMap().get(bukkitPlayer.getWorld());
-        if (entitiesInCurrentWorld == null) {
-            return;
-        }
-
-        for (Map.Entry<Integer, String> entry : entitiesInCurrentWorld.entrySet()) {
-            val text = entry.getValue();
-
-            val packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_METADATA);
-
-            // Write entity ID
-            packet.getIntegers().writeSafely(0, entry.getKey());
-
-
-            val result = getLanguageParser().parseComponent(
-                    languagePlayer,
-                    getConfig().getHologramSyntax(),
-                    ComponentSerializer.parse(text)
-            );
-
-            final List<WrappedDataValue> dataValues = new ArrayList<>();
-            this.dataValueHandler.getTextDisplayTextDataValue(result).ifPresent(dataValues::add);
-
-            if (dataValues.isEmpty()) {
-                // Don't send anything if there are no changes
-                continue;
-            }
-
-            // Write watchable objects
-            packet.getDataValueCollectionModifier().writeSafely(0, dataValues);
-            // Send packet without passing through listeners again
-            sendPacket(bukkitPlayer, packet, false);
-        }
-    }
-
-    /**
      * @param uniqueId The player to search for.
      * @return True if the player is logged in, false otherwise.
      */
@@ -939,10 +832,7 @@ public class EntitiesPacketHandler extends PacketHandler {
             // 1.19 removed this packet
             registry.put(PacketType.Play.Server.SPAWN_ENTITY_LIVING, asSync(this::handleSpawnEntityLiving));
         }
-        if (!MinecraftVersion.CONFIG_PHASE_PROTOCOL_UPDATE.atOrAbove()) {
-            // 1.20.2 removed this packet
-            registry.put(PacketType.Play.Server.NAMED_ENTITY_SPAWN, asSync(this::handleNamedEntitySpawn));
-        }
+        registry.put(PacketType.Play.Server.NAMED_ENTITY_SPAWN, asSync(this::handleNamedEntitySpawn));
         registry.put(PacketType.Play.Server.ENTITY_DESTROY, asSync(this::handleEntityDestroy));
 
         registry.put(PacketType.Play.Server.PLAYER_INFO, asSync(this::handlePlayerInfo));
@@ -1341,25 +1231,6 @@ public class EntitiesPacketHandler extends PacketHandler {
             return Optional.of(dataValue);
         }
 
-        Optional<WrappedDataValue> getTextDisplayTextDataValue(BaseComponent[] components) {
-            Object payload;
-            if (components != null) {
-                payload = WrappedChatComponent.fromJson(ComponentSerializer.toString(components)).getHandle();
-            } else {
-                payload = WrappedChatComponent.fromText("").getHandle();
-            }
-
-            // Display name has: index 23 and type chat
-            // https://wiki.vg/Entity_metadata#Text_Display
-            return Optional.of(
-                    new WrappedDataValue(
-                            23,
-                            WrappedDataWatcher.Registry.getChatComponentSerializer(false),
-                            payload
-                    )
-            );
-        }
-
         Optional<WrappedDataValue> translatePlayerDisplayNameDataValue(
                 SpigotLanguagePlayer languagePlayer,
                 WrappedDataValue dataValue,
@@ -1406,29 +1277,6 @@ public class EntitiesPacketHandler extends PacketHandler {
 
             val translatedItemStack = ItemStackTranslationUtils.translateItemStack(clonedItemStack, languagePlayer, false);
             return this.getItemStackDataValue(translatedItemStack);
-        }
-
-        Optional<WrappedDataValue> translateTextDisplayTextDataValue(
-                SpigotLanguagePlayer languagePlayer,
-                WrappedDataValue dataValue,
-                Consumer<String> saveToCache) {
-            val value = dataValue.getValue();
-            if (!(value instanceof WrappedChatComponent)) {
-                return Optional.empty();
-            }
-
-            val displayNameJson = ((WrappedChatComponent) value).getJson();
-
-            // Save to cache before translating
-            saveToCache.accept(displayNameJson);
-
-            val result = getLanguageParser().parseComponent(
-                    languagePlayer,
-                    getConfig().getHologramSyntax(),
-                    ComponentSerializer.parse(displayNameJson)
-            );
-
-            return this.getTextDisplayTextDataValue(result);
         }
     }
 }

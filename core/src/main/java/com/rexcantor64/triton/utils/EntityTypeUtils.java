@@ -1,6 +1,7 @@
 package com.rexcantor64.triton.utils;
 
 import com.comphenix.protocol.utility.MinecraftReflection;
+import com.comphenix.protocol.wrappers.MinecraftKey;
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.api.wrappers.EntityType;
 import lombok.SneakyThrows;
@@ -10,6 +11,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Set;
 
 public class EntityTypeUtils {
 
@@ -54,7 +56,6 @@ public class EntityTypeUtils {
         Class<?> iRegistry = MinecraftReflection.getIRegistry();
         Class<?> minecraftKeyClass = MinecraftReflection.getMinecraftKeyClass();
         Class<?> registryBlocksClass = MinecraftReflection.getMinecraftClass("core.RegistryBlocks", "RegistryBlocks");
-        Class<?> entityTypesClass = MinecraftReflection.getEntityTypes();
 
         Object entityTypeRegistry = Arrays.stream(iRegistry.getFields())
                 .filter(field -> {
@@ -62,9 +63,7 @@ public class EntityTypeUtils {
                     if (field.getType().equals(registryBlocksClass) || field.getType().equals(iRegistry)) {
                         ParameterizedType type = (ParameterizedType) field.getGenericType();
                         Type[] actualTypes = type.getActualTypeArguments();
-                        if (actualTypes.length == 1 && actualTypes[0] instanceof ParameterizedType) {
-                            return ((ParameterizedType) actualTypes[0]).getRawType().equals(entityTypesClass);
-                        }
+                        return actualTypes.length == 1 && actualTypes[0].getTypeName().endsWith(".EntityTypes<?>");
                     }
                     return false;
                 })
