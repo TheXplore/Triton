@@ -18,12 +18,16 @@ group 'com.rexcantor64.triton'
 
 allprojects {
     apply plugin: 'java'
-    version '3.9.0'
+    version '3.9.4'
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
     repositories {
         mavenLocal()
         mavenCentral()
+        maven {
+            name 'diogotcRepositorySnapshots'
+            url 'https://repo.diogotc.com/snapshots/'
+        }
         maven {
             url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
             content {
@@ -41,10 +45,6 @@ allprojects {
         maven {
             name 'velocity'
             url 'https://nexus.velocitypowered.com/repository/maven-public/'
-        }
-        maven {
-            name 'diogotcRepositorySnapshots'
-            url 'https://repo.diogotc.com/snapshots/'
         }
     }
 }

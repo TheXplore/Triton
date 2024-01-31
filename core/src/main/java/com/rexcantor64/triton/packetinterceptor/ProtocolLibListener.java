@@ -19,6 +19,7 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtFactory;
+import com.google.gson.JsonSyntaxException;
 import com.rexcantor64.triton.SpigotMLP;
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.language.item.SignLocation;
@@ -31,6 +32,8 @@ import com.rexcantor64.triton.utils.ComponentUtils;
 import com.rexcantor64.triton.utils.ItemStackTranslationUtils;
 import com.rexcantor64.triton.utils.NMSUtils;
 import com.rexcantor64.triton.wrappers.AdventureComponentWrapper;
+import com.rexcantor64.triton.wrappers.WrappedClientConfiguration;
+import com.rexcantor64.triton.wrappers.WrappedPlayerChatMessage;
 import lombok.SneakyThrows;
 import lombok.val;
 import net.md_5.bungee.api.chat.BaseComponent;
@@ -73,9 +76,13 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
     private final Class<BaseComponent[]> BASE_COMPONENT_ARRAY_CLASS = BaseComponent[].class;
     private StructureModifier<Object> SCOREBOARD_TEAM_METADATA_MODIFIER = null;
     private final Class<?> ADVENTURE_COMPONENT_CLASS;
+    private final Optional<Class<?>> NUMBER_FORMAT_CLASS;
     private final Field PLAYER_ACTIVE_CONTAINER_FIELD;
     private final String MERCHANT_RECIPE_SPECIAL_PRICE_FIELD;
     private final String MERCHANT_RECIPE_DEMAND_FIELD;
+
+    private final HandlerFunction ASYNC_PASSTHROUGH = asAsync((_packet, _player) -> {
+    });
 
     private final SignPacketHandler signPacketHandler = new SignPacketHandler();
     private final AdvancementsPacketHandler advancementsPacketHandler;
@@ -110,6 +117,7 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
         BOSSBAR_UPDATE_TITLE_ACTION_CLASS = main.getMcVersion() >= 17 ? NMSUtils.getClass("net.minecraft.network.protocol.game.PacketPlayOutBoss$e") : null;
 
         ADVENTURE_COMPONENT_CLASS = NMSUtils.getClassOrNull("net.kyori.adventure.text.Component");
+        NUMBER_FORMAT_CLASS = MinecraftReflection.getOptionalNMS("network.chat.numbers.NumberFormat");
 
         MERCHANT_RECIPE_SPECIAL_PRICE_FIELD = getMCVersion() >= 17 ? "g" : "specialPrice";
         MERCHANT_RECIPE_DEMAND_FIELD = getMCVersion() >= 17 ? "h" : "demand";
@@ -132,12 +140,14 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
         if (main.getMcVersion() >= 19) {
             // New chat packets on 1.19
             packetHandlers.put(PacketType.Play.Server.SYSTEM_CHAT, asAsync(this::handleSystemChat));
-            packetHandlers.put(PacketType.Play.Server.CHAT_PREVIEW, asAsync(this::handleChatPreview));
-        } else {
-            // In 1.19+, this packet is signed, so we cannot edit it.
-            // It's sent by the player anyway, so there's nothing to translate.
-            packetHandlers.put(PacketType.Play.Server.CHAT, asAsync(this::handleChat));
+            if (!MinecraftVersion.FEATURE_PREVIEW_UPDATE.atOrAbove()) {
+                // Removed in 1.19.3
+                packetHandlers.put(PacketType.Play.Server.CHAT_PREVIEW, asAsync(this::handleChatPreview));
+            }
         }
+        // In 1.19+, this packet is signed, but we can still edit it, since it might contain
+        // formatting from chat plugins.
+        packetHandlers.put(PacketType.Play.Server.CHAT, asAsync(this::handleChat));
         if (main.getMcVersion() >= 17) {
             // Title packet split on 1.17
             packetHandlers.put(PacketType.Play.Server.SET_TITLE_TEXT, asAsync(this::handleTitle));
@@ -155,8 +165,14 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
         if (main.getMcVersion() >= 13) {
             // Scoreboard rewrite on 1.13
             // It allows unlimited length team prefixes and suffixes
-            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_TEAM, asSync(this::handleScoreboardTeam));
-            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_OBJECTIVE, asSync(this::handleScoreboardObjective));
+            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_TEAM, asAsync(this::handleScoreboardTeam));
+            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_OBJECTIVE, asAsync(this::handleScoreboardObjective));
+            // Register the packets below so their order is kept between all scoreboard packets
+            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_DISPLAY_OBJECTIVE, ASYNC_PASSTHROUGH);
+            packetHandlers.put(PacketType.Play.Server.SCOREBOARD_SCORE, ASYNC_PASSTHROUGH);
+            if (MinecraftVersion.v1_20_4.atOrAbove()) {
+                packetHandlers.put(PacketType.Play.Server.RESET_SCORE, ASYNC_PASSTHROUGH);
+            }
         }
         packetHandlers.put(PacketType.Play.Server.WINDOW_ITEMS, asAsync(this::handleWindowItems));
         packetHandlers.put(PacketType.Play.Server.SET_SLOT, asAsync(this::handleSetSlot));
@@ -181,26 +197,42 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
     /* PACKET HANDLERS */
 
     private void handleChat(PacketEvent packet, SpigotLanguagePlayer languagePlayer) {
-        boolean ab = isActionbar(packet.getPacket());
+        boolean isSigned = MinecraftVersion.WILD_UPDATE.atOrAbove(); // MC 1.19+
+        if (isSigned && !main.getConfig().isSignedChat()) return;
+        // action bars are not sent here on 1.19+ anymore
+        boolean ab = !isSigned && isActionbar(packet.getPacket());
 
         // Don't bother parsing anything else if it's disabled on config
         if ((ab && !main.getConfig().isActionbars()) || (!ab && !main.getConfig().isChat())) return;
 
+        val chatModifier = packet.getPacket().getChatComponents();
         val baseComponentModifier = packet.getPacket().getSpecificModifier(BASE_COMPONENT_ARRAY_CLASS);
         BaseComponent[] result = null;
+        boolean hasPlayerChatMessageRecord = isSigned && !MinecraftVersion.FEATURE_PREVIEW_UPDATE.atOrAbove(); // MC 1.19-1.19.2
 
         // Hot fix for 1.16 Paper builds 472+ (and 1.17+)
         StructureModifier<?> adventureModifier =
                 ADVENTURE_COMPONENT_CLASS == null ? null : packet.getPacket().getSpecificModifier(ADVENTURE_COMPONENT_CLASS);
+        StructureModifier<WrappedPlayerChatMessage> playerChatModifier = null;
 
-        if (adventureModifier != null && adventureModifier.readSafely(0) != null) {
+        if (hasPlayerChatMessageRecord) {
+            // The message is wrapped in a PlayerChatMessage record
+            playerChatModifier = packet.getPacket().getModifier().withType(WrappedPlayerChatMessage.getWrappedClass(), WrappedPlayerChatMessage.CONVERTER);
+            WrappedPlayerChatMessage playerChatMessage = playerChatModifier.readSafely(0);
+            if (playerChatMessage != null) {
+                Optional<WrappedChatComponent> msg = playerChatMessage.getMessage();
+                if (msg.isPresent()) {
+                    result = ComponentSerializer.parse(msg.get().getJson());
+                }
+            }
+        } else if (adventureModifier != null && adventureModifier.readSafely(0) != null) {
             Object adventureComponent = adventureModifier.readSafely(0);
             result = AdventureComponentWrapper.toMd5Component(adventureComponent);
             adventureModifier.writeSafely(0, null);
         } else if (baseComponentModifier.readSafely(0) != null) {
             result = baseComponentModifier.readSafely(0);
         } else {
-            val msg = packet.getPacket().getChatComponents().readSafely(0);
+            val msg = chatModifier.readSafely(0);
             if (msg != null) result = ComponentSerializer.parse(msg.getJson());
         }
 
@@ -219,7 +251,13 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
             return;
         }
 
-        if (ab && !MinecraftVersion.EXPLORATION_UPDATE.atOrAbove()) {
+        if (MinecraftVersion.FEATURE_PREVIEW_UPDATE.atOrAbove()) { // MC 1.19.3+
+            // While chat is signed, we can still mess around with formatting and prefixes
+            chatModifier.writeSafely(0, WrappedChatComponent.fromJson(ComponentSerializer.toString(result)));
+        } else if (hasPlayerChatMessageRecord) { // MC 1.19-1.19.2
+            // While chat is signed, we can still mess around with formatting and prefixes
+            playerChatModifier.readSafely(0).setMessage(Optional.of(WrappedChatComponent.fromJson(ComponentSerializer.toString(result))));
+        } else if (ab && !MinecraftVersion.EXPLORATION_UPDATE.atOrAbove()) {
             // The Notchian client does not support true JSON messages on actionbars
             // on 1.10 and below. Therefore, we must convert to a legacy string inside
             // a TextComponent.
@@ -244,6 +282,7 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
         if ((ab && !main.getConfig().isActionbars()) || (!ab && !main.getConfig().isChat())) return;
 
         val stringModifier = packet.getPacket().getStrings();
+        val chatModifier = packet.getPacket().getChatComponents();
 
         BaseComponent[] result = null;
 
@@ -255,6 +294,14 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
             Object adventureComponent = adventureModifier.readSafely(0);
             result = AdventureComponentWrapper.toMd5Component(adventureComponent);
             adventureModifier.writeSafely(0, null);
+        } else if (chatModifier.readSafely(0) != null) {
+            try {
+                result = ComponentSerializer.parse(chatModifier.readSafely(0).getJson());
+            } catch (JsonSyntaxException ignore) {
+                // The md_5 chat library can't handle some messages of 1.20.4
+                // https://github.com/SpigotMC/BungeeCord/issues/3578
+                return;
+            }
         } else {
             val msgJson = stringModifier.readSafely(0);
             if (msgJson != null) {
@@ -277,7 +324,11 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
             return;
         }
 
-        stringModifier.writeSafely(0, ComponentSerializer.toString(result));
+        if (chatModifier.size() > 0) {
+            chatModifier.writeSafely(0, WrappedChatComponent.fromJson(ComponentSerializer.toString(result)));
+        } else {
+            stringModifier.writeSafely(0, ComponentSerializer.toString(result));
+        }
     }
 
     /**
@@ -654,8 +705,11 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
 
         val healthDisplay = packet.getPacket().getModifier().readSafely(2);
         val displayName = packet.getPacket().getChatComponents().readSafely(0);
+        val numberFormat = NUMBER_FORMAT_CLASS
+                .map(numberFormatClass -> packet.getPacket().getSpecificModifier(numberFormatClass).readSafely(0))
+                .orElse(null);
 
-        languagePlayer.setScoreboardObjective(objectiveName, displayName.getJson(), healthDisplay);
+        languagePlayer.setScoreboardObjective(objectiveName, displayName.getJson(), healthDisplay, numberFormat);
 
         BaseComponent[] result = main.getLanguageParser()
                 .parseComponent(languagePlayer, main.getConf().getScoreboardSyntax(), ComponentSerializer
@@ -740,9 +794,18 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
 
     @Override
     public ListeningWhitelist getReceivingWhitelist() {
+        val types = new ArrayList<PacketType>();
+        if (this.allowedTypes.contains(HandlerFunction.HandlerType.SYNC)) {
+            // only listen for these packets in the sync handler
+            types.add(PacketType.Play.Client.SETTINGS);
+            if (MinecraftVersion.CONFIG_PHASE_PROTOCOL_UPDATE.atOrAbove()) { // MC 1.20.2
+                types.add(PacketType.Configuration.Client.CLIENT_INFORMATION);
+            }
+        }
+
         return ListeningWhitelist.newBuilder()
                 .gamePhase(GamePhase.PLAYING)
-                .types(PacketType.Play.Client.SETTINGS)
+                .types(types)
                 .mergeOptions(ListenerOptions.ASYNC)
                 .highest()
                 .build();
@@ -807,6 +870,9 @@ public class ProtocolLibListener implements PacketListener, PacketInterceptor {
             packet.getStrings().writeSafely(0, key);
             packet.getChatComponents().writeSafely(0, WrappedChatComponent.fromJson(value.getChatJson()));
             packet.getModifier().writeSafely(2, value.getType());
+            NUMBER_FORMAT_CLASS.ifPresent(numberFormatClass ->
+                    packet.getSpecificModifier((Class<Object>) numberFormatClass)
+                            .writeSafely(0, value.getNumberFormat()));
             ProtocolLibrary.getProtocolManager().sendServerPacket(bukkitPlayer, packet, true);
         });
 
