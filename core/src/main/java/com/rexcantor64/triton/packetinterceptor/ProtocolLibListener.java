@@ -1,5 +1,31 @@
 package com.rexcantor64.triton.packetinterceptor;
 
+import static com.rexcantor64.triton.packetinterceptor.protocollib.HandlerFunction.asAsync;
+import static com.rexcantor64.triton.packetinterceptor.protocollib.HandlerFunction.asSync;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Sign;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MerchantRecipe;
+import org.bukkit.plugin.Plugin;
+
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.ListenerOptions;
@@ -32,39 +58,14 @@ import com.rexcantor64.triton.utils.ComponentUtils;
 import com.rexcantor64.triton.utils.ItemStackTranslationUtils;
 import com.rexcantor64.triton.utils.NMSUtils;
 import com.rexcantor64.triton.wrappers.AdventureComponentWrapper;
-import com.rexcantor64.triton.wrappers.WrappedClientConfiguration;
 import com.rexcantor64.triton.wrappers.WrappedPlayerChatMessage;
+
 import lombok.SneakyThrows;
 import lombok.val;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.TranslatableComponent;
 import net.md_5.bungee.chat.ComponentSerializer;
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.Sign;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.MerchantRecipe;
-import org.bukkit.plugin.Plugin;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static com.rexcantor64.triton.packetinterceptor.protocollib.HandlerFunction.asAsync;
-import static com.rexcantor64.triton.packetinterceptor.protocollib.HandlerFunction.asSync;
 
 @SuppressWarnings({"deprecation"})
 public class ProtocolLibListener implements PacketListener, PacketInterceptor {

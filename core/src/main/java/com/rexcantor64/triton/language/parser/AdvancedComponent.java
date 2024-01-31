@@ -46,6 +46,7 @@ public class AdvancedComponent {
         for (BaseComponent comp : components) {
             boolean hasClick = false;
             boolean hasHover = false;
+            boolean hasFont = false;
             builder.append(ComponentUtils.getColorFromBaseComponent(comp).toString());
             if (comp.hasFormatting()) {
                 if (comp.isBold())
@@ -117,7 +118,6 @@ public class AdvancedComponent {
                     // old versions of Spigot don't have KeybindComponent
                 }
             }
-            
             if (comp.getExtra() != null) {
                 AdvancedComponent component = fromBaseComponent(onlyText, comp.getExtra()
                         .toArray(new BaseComponent[0]));
@@ -126,6 +126,8 @@ public class AdvancedComponent {
                 advancedComponent.getHovers().putAll(component.getHovers());
                 advancedComponent.getAllTranslatableArguments().putAll(component.getAllTranslatableArguments());
             }
+            if (hasFont)
+                builder.append("\uE801");
             if (hasHover)
                 builder.append("\uE501");
             if (hasClick)
@@ -198,7 +200,7 @@ public class AdvancedComponent {
                 } else {
                     component.setColor(format);
                 }
-            } else if (c == '\uE400' || c == '\uE500') {
+            } else if (c == '\uE400' || c == '\uE500' || c == '\uE800') {
                 BaseComponent previousComponent = component;
                 if (builder.length() != 0) {
                     component.setText(builder.toString());
@@ -213,17 +215,26 @@ public class AdvancedComponent {
                     ClickEvent.Action action = ComponentUtils.decodeClickAction(actionCode);
                     component.setClickEvent(new ClickEvent(action, this.getComponent(uuid)));
                     i += 2 + 36;
-                } else { // c == '\uE500'
+                } else if (c == '\uE500') {
                     String uuid = text.substring(i + 1, i + 1 + 36);
                     component.setHoverEvent(this.hovers.get(uuid));
                     i += 1 + 36;
+                } else { // c == '\uE800'
+                    i++;
+                    StringBuilder font = new StringBuilder();
+                    while (text.charAt(i) != '\uE802') {
+                        font.append(text.charAt(i));
+                        i++;
+                    }
+                    i++;
+                    component.setFont(font.toString());
                 }
                 int deep = 0;
                 StringBuilder content = new StringBuilder();
                 while (text.charAt(i) != c + 1 || deep != 0) {
                     char c1 = text.charAt(i);
-                    if (c1 == c) deep++; // c == \uE400 || c == \uE500
-                    if (c1 == c + 1) deep--; // c + 1 == \uE401 || c + 1 == \uE501
+                    if (c1 == c) deep++; // c == \uE400 || c == \uE500 || c == \uE800
+                    if (c1 == c + 1) deep--; // c + 1 == \uE401 || c + 1 == \uE501 || c + 1 == \uE801
                     content.append(c1);
                     i++;
                 }
@@ -264,7 +275,6 @@ public class AdvancedComponent {
                         tc.addWith(bc == null ? new TextComponent("") : bc[0]);
                     }
                 list.add(tc);
-                
             } else if (c == '\uE700') {
                 i++;
                 StringBuilder key = new StringBuilder();
@@ -285,6 +295,7 @@ public class AdvancedComponent {
                 list.add(kc);
             } else {
                 builder.append(c);
+            }
         }
         if (builder.length() != 0) {
             component.setText(builder.toString());
