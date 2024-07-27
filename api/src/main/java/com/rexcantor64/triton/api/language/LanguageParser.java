@@ -1,8 +1,10 @@
 package com.rexcantor64.triton.api.language;
 
-import java.util.function.Function;
+import java.util.UUID;
+import java.util.function.BiFunction;
 
 import com.rexcantor64.triton.api.config.FeatureSyntax;
+
 import net.md_5.bungee.api.chat.BaseComponent;
 
 /**
@@ -36,6 +38,6 @@ public interface LanguageParser {
     /**
      * converts minimessage input to gson serialized parsed component
      */
-    void setMiniMessageParser(Function<String, String> parser);
+    void setMiniMessageParser(BiFunction<UUID, String, String> parser);
     //ILUMINARY STOP
 }
