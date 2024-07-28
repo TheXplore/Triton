@@ -1,5 +1,8 @@
 package com.rexcantor64.triton.bridge;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.rexcantor64.triton.Triton;
@@ -8,12 +11,9 @@ import com.rexcantor64.triton.language.item.LanguageSign;
 import com.rexcantor64.triton.language.item.LanguageText;
 import com.rexcantor64.triton.player.LanguagePlayer;
 import com.rexcantor64.triton.storage.LocalStorage;
+
 import lombok.NonNull;
 import lombok.val;
-import lombok.var;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Actions:

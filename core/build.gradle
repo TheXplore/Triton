@@ -32,6 +32,7 @@ dependencies {
     compileOnly 'org.apache.logging.log4j:log4j-core:2.17.1'
     implementation 'org.slf4j:slf4j-nop:1.7.36'
     implementation 'com.zaxxer:HikariCP:4.0.3'
+    implementation 'com.mysql:mysql-connector-j:8.4.0'
     implementation('com.tananaev:json-patch:1.1') {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
@@ -39,7 +40,6 @@ dependencies {
     implementation 'org.bstats:bstats-bukkit:2.2.1'
     implementation 'org.bstats:bstats-bungeecord:2.2.1'
     implementation project(path: ":api")
-    implementation project(path: ":spigot-legacy")
     implementation project(path: ":v1_13")
 
     // Test dependencies

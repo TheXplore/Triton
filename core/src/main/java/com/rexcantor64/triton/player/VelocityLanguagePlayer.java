@@ -1,16 +1,17 @@
 package com.rexcantor64.triton.player;
 
+import java.util.HashMap;
+import java.util.UUID;
+
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.api.language.Language;
 import com.rexcantor64.triton.language.ExecutableCommand;
 import com.rexcantor64.triton.utils.SocketUtils;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+
 import lombok.val;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-
-import java.util.HashMap;
-import java.util.UUID;
 
 public class VelocityLanguagePlayer implements LanguagePlayer {
     private final Player parent;

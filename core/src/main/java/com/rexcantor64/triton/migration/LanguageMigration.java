@@ -1,18 +1,23 @@
 package com.rexcantor64.triton.migration;
 
-import com.google.gson.*;
-import com.rexcantor64.triton.Triton;
-import com.rexcantor64.triton.config.interfaces.ConfigurationProvider;
-import com.rexcantor64.triton.config.interfaces.YamlConfiguration;
-import com.rexcantor64.triton.utils.FileUtils;
-import lombok.Cleanup;
-import lombok.val;
-import lombok.var;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Objects;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.rexcantor64.triton.Triton;
+import com.rexcantor64.triton.config.interfaces.ConfigurationProvider;
+import com.rexcantor64.triton.config.interfaces.YamlConfiguration;
+import com.rexcantor64.triton.utils.FileUtils;
+
+import lombok.Cleanup;
+import lombok.val;
 
 public class LanguageMigration {
 

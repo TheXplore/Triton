@@ -1,17 +1,17 @@
 package com.rexcantor64.triton.config;
 
-import com.rexcantor64.triton.Triton;
-import com.rexcantor64.triton.config.interfaces.ConfigurationProvider;
-import com.rexcantor64.triton.config.interfaces.YamlConfiguration;
-import com.rexcantor64.triton.utils.YAMLUtils;
-import lombok.val;
-import lombok.var;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import com.rexcantor64.triton.Triton;
+import com.rexcantor64.triton.config.interfaces.ConfigurationProvider;
+import com.rexcantor64.triton.config.interfaces.YamlConfiguration;
+import com.rexcantor64.triton.utils.YAMLUtils;
+
+import lombok.val;
 
 public class MessagesConfig {
 

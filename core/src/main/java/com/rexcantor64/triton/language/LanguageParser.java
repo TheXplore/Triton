@@ -1,16 +1,21 @@
 package com.rexcantor64.triton.language;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+
 import com.google.gson.JsonParseException;
 import com.rexcantor64.triton.SpigotMLP;
 import com.rexcantor64.triton.Triton;
 import com.rexcantor64.triton.api.config.FeatureSyntax;
 import com.rexcantor64.triton.api.language.Localized;
+import com.rexcantor64.triton.api.players.LanguagePlayer;
 import com.rexcantor64.triton.language.localized.StringLocale;
 import com.rexcantor64.triton.language.parser.AdvancedComponent;
 import com.rexcantor64.triton.player.SpigotLanguagePlayer;
 import com.rexcantor64.triton.utils.ComponentUtils;
-import com.rexcantor64.triton.utils.ItemStackTranslationUtils;
-import com.rexcantor64.triton.wrappers.legacy.HoverComponentWrapper;
 
 import lombok.Setter;
 import lombok.val;
@@ -20,14 +25,8 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.chat.ComponentSerializer;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class LanguageParser implements com.rexcantor64.triton.api.language.LanguageParser {
 
@@ -254,7 +253,7 @@ public class LanguageParser implements com.rexcantor64.triton.api.language.Langu
                 entry.setValue(com.rexcantor64.triton.wrappers.HoverComponentWrapper
                         .handleHoverEvent(entry.getValue(), language, syntax));
         } catch (NoSuchMethodError e) {
-            // MC 1.15 and below
+            /* MC 1.15 and below
             for (val entry : advancedComponent.getHovers().entrySet()) {
                 val comps = HoverComponentWrapper.getValue(entry.getValue());
                 if (entry.getValue().getAction() == HoverEvent.Action.SHOW_ITEM) {
@@ -277,7 +276,7 @@ public class LanguageParser implements com.rexcantor64.triton.api.language.Langu
                     entry.setValue(HoverComponentWrapper
                             .setValue(entry.getValue(), TextComponent.fromLegacyText(replaced)));
                 }
-            }
+            }*/
         }
 
         for (val entry : advancedComponent.getAllTranslatableArguments().entrySet()) {
@@ -288,7 +287,7 @@ public class LanguageParser implements com.rexcantor64.triton.api.language.Langu
     }
     
     //ILUMINARY START
-    private @Setter Function<String, String> miniMessageParser = mmInput -> GsonComponentSerializer.gson().serialize(MiniMessage.miniMessage().deserialize(mmInput));
+    private @Setter BiFunction<UUID, String, String> miniMessageParser = (playerUUID, mmInput) -> GsonComponentSerializer.gson().serialize(MiniMessage.miniMessage().deserialize(mmInput));
 
     private AdvancedComponent parseTritonTranslation(String translatedResult, Localized contextPlayer) {
         if (contextPlayer instanceof SpigotLanguagePlayer && Triton.isSpigot() && Triton.asSpigot().isPapiEnabled()) {
@@ -314,7 +313,8 @@ public class LanguageParser implements com.rexcantor64.triton.api.language.Langu
         			? translatedResult.substring(9)
         			: translatedResult;
             try {
-                componentResult = ComponentSerializer.parse(miniMessageParser.apply(mmInput));
+            	UUID uuid = (contextPlayer instanceof LanguagePlayer) ? ((LanguagePlayer) contextPlayer).getUUID() : null;
+                componentResult = ComponentSerializer.parse(miniMessageParser.apply(uuid, mmInput));                
             } catch (JsonParseException | NullPointerException e) {
                 Triton.get().getLogger()
                         .logError(e, "Failed to parse Mini Message translation: %1", mmInput);

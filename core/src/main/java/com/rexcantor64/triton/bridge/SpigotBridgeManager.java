@@ -1,24 +1,5 @@
 package com.rexcantor64.triton.bridge;
 
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.rexcantor64.triton.Triton;
-import com.rexcantor64.triton.commands.handler.CommandEvent;
-import com.rexcantor64.triton.commands.handler.SpigotSender;
-import com.rexcantor64.triton.language.Language;
-import com.rexcantor64.triton.language.item.*;
-import com.rexcantor64.triton.player.SpigotLanguagePlayer;
-import com.rexcantor64.triton.storage.LocalStorage;
-import lombok.val;
-import lombok.var;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.messaging.PluginMessageListener;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -31,6 +12,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.messaging.PluginMessageListener;
+import org.jetbrains.annotations.NotNull;
+
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.rexcantor64.triton.Triton;
+import com.rexcantor64.triton.commands.handler.CommandEvent;
+import com.rexcantor64.triton.commands.handler.SpigotSender;
+import com.rexcantor64.triton.language.Language;
+import com.rexcantor64.triton.language.item.Collection;
+import com.rexcantor64.triton.language.item.LanguageItem;
+import com.rexcantor64.triton.language.item.LanguageSign;
+import com.rexcantor64.triton.language.item.LanguageText;
+import com.rexcantor64.triton.language.item.SignLocation;
+import com.rexcantor64.triton.player.SpigotLanguagePlayer;
+import com.rexcantor64.triton.storage.LocalStorage;
+
+import lombok.val;
 
 public class SpigotBridgeManager implements PluginMessageListener {
 

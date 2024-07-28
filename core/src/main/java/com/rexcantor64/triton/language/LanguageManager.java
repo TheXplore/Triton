@@ -22,7 +22,6 @@ import com.rexcantor64.triton.storage.LocalStorage;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
-import net.md_5.bungee.api.ChatColor;
 
 public class LanguageManager implements com.rexcantor64.triton.api.language.LanguageManager {
 
@@ -51,7 +50,7 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
             if (replacement == null) continue;
             try {
                 Matcher matcher = entry.getKey().matcher(input);
-                input = matcher.replaceAll(ChatColor.translateAlternateColorCodes('&', replacement));
+                input = matcher.replaceAll(replacement);
             } catch (IndexOutOfBoundsException e) {
                 Triton.get().getLogger().logError(
                         "Failed to translate using patterns: translation has more placeholders than regex groups. Translation key: %1",
@@ -79,8 +78,7 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
         }
 
         val textMain = getTextForLanguage(this.getMainLanguage().getName(), code, args);
-        return textMain.orElseGet(() -> ChatColor.translateAlternateColorCodes('&',
-                Triton.get().getMessagesConfig().getMessage("error.message-not-found", code, Arrays.toString(args))));
+        return textMain.orElseGet(() -> Triton.get().getMessagesConfig().getMessage("error.message-not-found", code, Arrays.toString(args)));
     }
 
     public String getTextFromMain(@NonNull String code, @NonNull Object... args) {
@@ -103,7 +101,7 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
         // Loop backwards in order to replace %10 before %1 (for example)
         for (int i = args.length - 1; i >= 0; --i)
             msg = msg.replace("%" + (i + 1), String.valueOf(args[i]));
-        return ChatColor.translateAlternateColorCodes('&', msg);
+        return msg;
     }
 
     public String[] getSign(LanguagePlayer player, SignLocation location) {
@@ -162,11 +160,9 @@ public class LanguageManager implements com.rexcantor64.triton.api.language.Lang
                                 language,
                                 Triton.get().getConf().getSignsSyntax()
                         );
-                while (result[i].startsWith(ChatColor.RESET.toString()))
+                while (result[i].startsWith("§r"))
                     result[i] = result[i].substring(2);
             }
-
-            result[i] = ChatColor.translateAlternateColorCodes('&', result[i]);
         }
 
         return result;

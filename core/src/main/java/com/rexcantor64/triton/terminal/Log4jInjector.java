@@ -1,14 +1,14 @@
 package com.rexcantor64.triton.terminal;
 
-import com.rexcantor64.triton.Triton;
-import com.rexcantor64.triton.utils.AppenderRefFactory;
-import lombok.var;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.appender.rewrite.RewriteAppender;
 import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
+
+import com.rexcantor64.triton.Triton;
+import com.rexcantor64.triton.utils.AppenderRefFactory;
 
 public class Log4jInjector {
 

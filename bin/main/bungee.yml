@@ -1,0 +1,8 @@
+name: Triton
+main: com.rexcantor64.triton.plugin.BungeePlugin
+version: 3.9.0
+author: Rexcantor64
+depends:
+ - Protocolize
+description: "A plugin that replaces any message on your server, to the receiver's\
+  \ language, in real time!"
